@@ -8,6 +8,7 @@ import random
 from typing import Tuple
 from scipy import special
 import keras.backend as K
+import pickle
 
 from torchvision import transforms
 import torch
@@ -191,3 +192,10 @@ for noise in noise_multipliers:
                         shuffle=True)
     histories.append(history)
     all_reports.extend(callback.attack_results)
+
+# save model results to files
+h_file = <path to file>
+ar_file = <path to file>
+for i in range(len(histories)):
+  pd.DataFrame.from_dict(histories[i].history).to_csv(h_file.format(num=i),index=False)
+pickle.dump(all_reports, open(ar_file, 'wb'))
