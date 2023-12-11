@@ -51,13 +51,29 @@ def load_images(folder_path):
     return image_list
 
 # get images from downloaded kaggle datasets
-mal1_train = load_images('/Users/devanshishah/Downloads/cs4973/project/data/LungcancerDataSet/Data/train/mal')
-mal1_test = load_images('/Users/devanshishah/Downloads/cs4973/project/data/LungcancerDataSet/Data/test/mal')
-norm1_train = load_images('/Users/devanshishah/Downloads/cs4973/project/data/LungcancerDataSet/Data/train/norm')
-norm1_test = load_images('/Users/devanshishah/Downloads/cs4973/project/data/LungcancerDataSet/Data/test/norm')
-mal2 = load_images('/Users/devanshishah/Downloads/cs4973/project/data/iq-oth/IQ-OTHNCCD/mal')
-norm2 = load_images('/Users/devanshishah/Downloads/cs4973/project/data/iq-oth/IQ-OTHNCCD/norm')
+mal1_train = load_images(<path to dataset>)
+norm1_train = load_images(<path to dataset>)
 
+# combine images and labels (use a subset of the data for testing purposes)
+norms = [0] * (455)
+mals = [1] * (460)
+data = np.stack(norm1_train + norm1_test + norm2 + mal1_train + mal1_test + mal2)
+labels = np.concatenate((norms,mals))
+
+# create tensor dataset
+dataset = tf.data.Dataset.from_tensor_slices((data, labels))
+batched_ds = dataset.batch(32)
+train_ds, val_ds = tf.keras.utils.split_dataset(
+    batched_ds, left_size=0.7, right_size=0.3, shuffle=True, seed=None
+)
+
+# seperate into training and testing datasets
+x_test = np.concatenate([x for x, y in val_ds], axis=0)
+y_test = np.concatenate([y for x, y in val_ds], axis=0)
+x_train = np.concatenate([x for x, y in train_ds], axis=0)
+y_train = np.concatenate([y for x, y in train_ds], axis=0)
+
+# find the best best performing l2_norm_clip
 l2_histories = []
 l2_norm_clip = [0.5, 0.7, 1.0, 1.3, 1.5, 1.7, 1.9, 2, 2.5] # play around
 for l2 in l2_norm_clip:
@@ -80,6 +96,7 @@ for l2 in l2_norm_clip:
                         shuffle=True)
     l2_histories.append(history)
 
+# find the best performing learning rate
 lr_histories = []
 learning_rate_multiplier = [0.0001, 0.001, 0.01, 0.1, 0.2, 0.3]
 for lr in learning_rate_multiplier:
