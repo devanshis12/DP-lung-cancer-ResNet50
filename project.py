@@ -100,31 +100,6 @@ class PrivacyMetrics(tf.keras.callbacks.Callback):
 
     self.attack_results.append(attack_results)
 
-class CategoricalTruePositives(tf.keras.metrics.Metric):
-
-    def __init__(self, num_classes, batch_size,
-                 name="categorical_true_positives", **kwargs):
-        super(CategoricalTruePositives, self).__init__(name=name, **kwargs)
-
-        self.batch_size = batch_size
-        self.num_classes = num_classes
-
-        self.cat_true_positives = self.add_weight(name="ctp", initializer="zeros")
-
-    def update_state(self, y_test, y_pred, sample_weight=None):
-
-        y_test = K.argmax(y_test, axis=-1)
-        y_pred = K.argmax(y_pred, axis=-1)
-        y_test = K.flatten(y_test)
-
-        true_poss = K.sum(K.cast((K.equal(y_test, y_pred)), dtype=tf.float32))
-
-        self.cat_true_positives.assign_add(true_poss)
-
-    def result(self):
-
-        return self.cat_true_positives
-
 # get images from downloaded kaggle datasets
 mal1_train = load_images(<path to dataset>)
 mal1_test = load_images(<path to dataset>)
@@ -161,6 +136,7 @@ batch_size = 32
 epochs_per_report = 2
 all_reports = []
 histories = []
+cms = []
 
 # start with zero and increase noise to increase privacy
 noise_multipliers = [0,0.4,0.8,1,1.4,1.8,2]
@@ -190,12 +166,20 @@ for noise in noise_multipliers:
                         batch_size=batch_size,
                         callbacks=[callback],
                         shuffle=True)
+
+    resnet_50.save(f'{noise}.keras')
+    pred = resnet_50.predict(train_ds)
+    cm = confusion_matrix(y_train, pred.argmax(axis=1))
+    
+    cms.append(cm)
     histories.append(history)
     all_reports.extend(callback.attack_results)
 
 # save model results to files
 h_file = <path to file>
 ar_file = <path to file>
+cm_file = <path to file>
 for i in range(len(histories)):
   pd.DataFrame.from_dict(histories[i].history).to_csv(h_file.format(num=i),index=False)
 pickle.dump(all_reports, open(ar_file, 'wb'))
+pickle.dump(cms, open(cm_file, 'wb'))
